@@ -6,6 +6,9 @@ const tiersContainer = document.querySelector(".tiers");
 const cardsContainer = document.querySelector(".cards");
 
 let activeTier;
+let draggedImage = null;
+let shadowElement = null;
+
 
 const resetTierImages = (tier) => {
   const images = tier.querySelectorAll(".items img");
@@ -46,11 +49,11 @@ const handleAppendTier = () => {
 const handleSettingsClick = (tier) => {
   activeTier = tier;
 
-  // populate the textarea
+  // Populate the textarea
   const label = tier.querySelector(".label");
   settingsModal.querySelector(".tier-label").value = label.innerText;
 
-  // select the color
+  // Select the color
   const color = getComputedStyle(label).getPropertyValue("--color");
   settingsModal.querySelector(`input[value="${color}"]`).checked = true;
 
@@ -68,9 +71,8 @@ const handleMoveTier = (tier, direction) => {
 };
 
 const handleDragover = (event) => {
-  event.preventDefault(); // allow drop
+  event.preventDefault(); // Allow drop
 
-  const draggedImage = document.querySelector(".dragging");
   const target = event.target;
 
   if (target.classList.contains("items")) {
@@ -88,7 +90,7 @@ const handleDragover = (event) => {
 };
 
 const handleDrop = (event) => {
-  event.preventDefault(); // prevent default browser handling
+  event.preventDefault(); // Prevent default browser handling
 };
 
 const createTier = (label = "Change me") => {
@@ -143,17 +145,67 @@ const initDraggables = () => {
   images.forEach((img) => {
     img.draggable = true;
 
+    // Mouse events
     img.addEventListener("dragstart", (e) => {
       e.dataTransfer.setData("text/plain", "");
       img.classList.add("dragging");
+      draggedImage = img;
     });
 
-    img.addEventListener("dragend", () => img.classList.remove("dragging"));
+    img.addEventListener("dragend", () => {
+      img.classList.remove("dragging");
+      draggedImage = null;
+    });
 
     img.addEventListener("dblclick", () => {
       if (img.parentElement !== cardsContainer) {
         cardsContainer.appendChild(img);
         cardsContainer.scrollLeft = cardsContainer.scrollWidth;
+      }
+    });
+
+    // Touch events
+    img.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      draggedImage = img;
+      img.classList.add("dragging");
+
+      // Create a shadow element
+      shadowElement = img.cloneNode(true);
+      shadowElement.style.position = "fixed";
+      shadowElement.style.top = `${e.touches[0].clientY}px`;
+      shadowElement.style.left = `${e.touches[0].clientX}px`;
+      shadowElement.style.pointerEvents = "none";
+      shadowElement.style.opacity = "0.5";
+      shadowElement.style.zIndex = "1000";
+      shadowElement.style.transform = "translate(-50%, -50%)";
+      document.body.appendChild(shadowElement);
+    });
+
+    img.addEventListener("touchmove", (e) => {
+      e.preventDefault();
+      if (draggedImage && shadowElement) {
+        const touch = e.touches[0];
+        shadowElement.style.top = `${touch.clientY}px`;
+        shadowElement.style.left = `${touch.clientX}px`;
+      }
+    });
+
+    img.addEventListener("touchend", (e) => {
+      e.preventDefault();
+      if (draggedImage && shadowElement) {
+        const touch = e.changedTouches[0];
+        const targetElement = document.elementFromPoint(touch.clientX, touch.clientY);
+
+        if (targetElement && targetElement.classList.contains("items")) {
+          targetElement.appendChild(draggedImage);
+        }
+
+        // Clean up
+        shadowElement.remove();
+        shadowElement = null;
+        draggedImage.classList.remove("dragging");
+        draggedImage = null;
       }
     });
   });
@@ -163,14 +215,14 @@ initDraggables();
 initDefaultTierList();
 initColorOptions();
 
-//* event listeners
+// Event listeners
 
-document.querySelector("h1").addEventListener("click", () => {
+document.querySelector("h10").addEventListener("click", () => {
   tiersContainer.appendChild(createTier());
 });
 
 settingsModal.addEventListener("click", (event) => {
-  // if the clicked element is the settings modal then close it
+  // If the clicked element is the settings modal, close it
   if (event.target === settingsModal) {
     settingsModal.close();
   } else {
@@ -209,7 +261,6 @@ colorsContainer.addEventListener("change", (event) => {
 cardsContainer.addEventListener("dragover", (event) => {
   event.preventDefault();
 
-  const draggedImage = document.querySelector(".dragging");
   if (draggedImage) {
     cardsContainer.appendChild(draggedImage);
   }
@@ -218,4 +269,53 @@ cardsContainer.addEventListener("dragover", (event) => {
 cardsContainer.addEventListener("drop", (event) => {
   event.preventDefault();
   cardsContainer.scrollLeft = cardsContainer.scrollWidth;
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Save or Download Button
+const saveDownloadBtn = document.getElementById("save-download");
+const previewDialog = document.getElementById("preview-dialog");
+const previewImage = document.getElementById("preview-image");
+const downloadBtn = document.getElementById("download-btn");
+const closePreviewBtn = document.getElementById("close-preview");
+
+saveDownloadBtn.addEventListener("click", async () => {
+  // Capture the tiers container as an image
+  const tiersContainer = document.querySelector(".tiers");
+  const canvas = await html2canvas(tiersContainer, {
+    scale: 2, // Increase scale for better quality
+    logging: true,
+    useCORS: true,
+  });
+
+  // Convert canvas to image URL
+  const imageUrl = canvas.toDataURL("image/png");
+
+  // Display the image in the preview dialog
+  previewImage.src = imageUrl;
+  previewDialog.showModal();
+
+  // Download the image when the download button is clicked
+  downloadBtn.addEventListener("click", () => {
+    const link = document.createElement("a");
+    link.href = imageUrl;
+    link.download = "tierlist.png";
+    link.click();
+  });
+});
+
+// Close the preview dialog
+closePreviewBtn.addEventListener("click", () => {
+  previewDialog.close();
 });
