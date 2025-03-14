@@ -319,3 +319,13 @@ saveDownloadBtn.addEventListener("click", async () => {
 closePreviewBtn.addEventListener("click", () => {
   previewDialog.close();
 });
+
+
+        // Toggle hamburger menu and navigation links
+        const hamburgerMenu = document.getElementById('hamburgerMenu');
+        const stellarNav = document.getElementById('stellarNav');
+
+        hamburgerMenu.addEventListener('click', () => {
+            hamburgerMenu.classList.toggle('active');
+            stellarNav.classList.toggle('active');
+        });
