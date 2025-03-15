@@ -4,17 +4,15 @@ const settingsModal = document.querySelector(".settings-modal");
 const colorsContainer = settingsModal.querySelector(".colors");
 const tiersContainer = document.querySelector(".tiers");
 const cardsContainer = document.querySelector(".cards");
-
-let activeTier;
-let draggedImage = null;
-let shadowElement = null;
-
-// Save or Download functionality
 const saveDownloadBtn = document.querySelector(".save-download-btn");
 const previewBox = document.querySelector(".preview-box");
 const previewTiers = document.querySelector(".preview-tiers");
 const closePreviewBtn = document.querySelector(".close-preview");
 const downloadImageBtn = document.querySelector(".download-image-btn");
+
+let activeTier;
+let draggedImage = null;
+let shadowElement = null;
 
 // Reset tier images
 const resetTierImages = (tier) => {
@@ -24,7 +22,7 @@ const resetTierImages = (tier) => {
   });
 };
 
-// Delete tier
+// Handle delete tier
 const handleDeleteTier = () => {
   if (activeTier) {
     resetTierImages(activeTier);
@@ -33,7 +31,7 @@ const handleDeleteTier = () => {
   }
 };
 
-// Clear tier
+// Handle clear tier
 const handleClearTier = () => {
   if (activeTier) {
     resetTierImages(activeTier);
@@ -41,7 +39,7 @@ const handleClearTier = () => {
   }
 };
 
-// Prepend tier
+// Handle prepend tier
 const handlePrependTier = () => {
   if (activeTier) {
     tiersContainer.insertBefore(createTier(), activeTier);
@@ -49,7 +47,7 @@ const handlePrependTier = () => {
   }
 };
 
-// Append tier
+// Handle append tier
 const handleAppendTier = () => {
   if (activeTier) {
     tiersContainer.insertBefore(createTier(), activeTier.nextSibling);
@@ -57,7 +55,7 @@ const handleAppendTier = () => {
   }
 };
 
-// Open settings modal
+// Handle settings click
 const handleSettingsClick = (tier) => {
   activeTier = tier;
 
@@ -72,7 +70,7 @@ const handleSettingsClick = (tier) => {
   settingsModal.showModal();
 };
 
-// Move tier up or down
+// Handle move tier
 const handleMoveTier = (tier, direction) => {
   const sibling =
     direction === "up" ? tier.previousElementSibling : tier.nextElementSibling;
@@ -83,7 +81,7 @@ const handleMoveTier = (tier, direction) => {
   }
 };
 
-// Handle dragover event
+// Handle dragover
 const handleDragover = (event) => {
   event.preventDefault(); // Allow drop
 
@@ -101,38 +99,14 @@ const handleDragover = (event) => {
       target.after(draggedImage);
     }
   }
-
-  // Enable scrolling while dragging
-  const container = target.closest(".cards, .tiers");
-  if (container) {
-    const rect = container.getBoundingClientRect();
-    const scrollThreshold = 50; // Distance from edge to start scrolling
-    const scrollSpeed = 10; // Speed of scrolling
-
-    if (event.clientY < rect.top + scrollThreshold) {
-      // Scroll up
-      container.scrollBy(0, -scrollSpeed);
-    } else if (event.clientY > rect.bottom - scrollThreshold) {
-      // Scroll down
-      container.scrollBy(0, scrollSpeed);
-    }
-
-    if (event.clientX < rect.left + scrollThreshold) {
-      // Scroll left
-      container.scrollBy(-scrollSpeed, 0);
-    } else if (event.clientX > rect.right - scrollThreshold) {
-      // Scroll right
-      container.scrollBy(scrollSpeed, 0);
-    }
-  }
 };
 
-// Handle drop event
+// Handle drop
 const handleDrop = (event) => {
   event.preventDefault(); // Prevent default browser handling
 };
 
-// Create a new tier
+// Create tier
 const createTier = (label = "Change me") => {
   const tierColor = colors[tiersContainer.children.length % colors.length];
 
@@ -182,7 +156,7 @@ const initDefaultTierList = () => {
   });
 };
 
-// Initialize draggable images
+// Initialize draggables
 const initDraggables = () => {
   const images = cardsContainer.querySelectorAll("img");
   images.forEach((img) => {
@@ -207,6 +181,40 @@ const initDraggables = () => {
       }
     });
 
+    // Enable scrolling while dragging
+    img.addEventListener("mousedown", (e) => {
+      if (e.button === 0) {
+        const startX = e.clientX;
+        const startY = e.clientY;
+
+        const handleMouseMove = (e) => {
+          const deltaX = e.clientX - startX;
+          const deltaY = e.clientY - startY;
+
+          // Scroll the container if the mouse moves near the edges
+          const scrollSpeed = 10;
+          if (deltaY < -50) {
+            cardsContainer.scrollBy(0, -scrollSpeed); // Scroll up
+          } else if (deltaY > 50) {
+            cardsContainer.scrollBy(0, scrollSpeed); // Scroll down
+          }
+          if (deltaX < -50) {
+            cardsContainer.scrollBy(-scrollSpeed, 0); // Scroll left
+          } else if (deltaX > 50) {
+            cardsContainer.scrollBy(scrollSpeed, 0); // Scroll right
+          }
+        };
+
+        const handleMouseUp = () => {
+          document.removeEventListener("mousemove", handleMouseMove);
+          document.removeEventListener("mouseup", handleMouseUp);
+        };
+
+        document.addEventListener("mousemove", handleMouseMove);
+        document.addEventListener("mouseup", handleMouseUp);
+      }
+    });
+
     // Touch events
     img.addEventListener("touchstart", (e) => {
       e.preventDefault();
@@ -223,6 +231,9 @@ const initDraggables = () => {
       shadowElement.style.zIndex = "1000";
       shadowElement.style.transform = "translate(-50%, -50%)";
       document.body.appendChild(shadowElement);
+
+      touchStartX = e.touches[0].clientX;
+      touchStartY = e.touches[0].clientY;
     });
 
     img.addEventListener("touchmove", (e) => {
@@ -254,14 +265,7 @@ const initDraggables = () => {
   });
 };
 
-// Initialize the app
-initDraggables();
-initDefaultTierList();
-initColorOptions();
-
-// Event listeners
-
-// Save or Download button
+// Show preview box and populate tiers
 saveDownloadBtn.addEventListener("click", () => {
   previewBox.classList.add("active");
   previewTiers.innerHTML = tiersContainer.innerHTML; // Copy tiers to preview
@@ -282,52 +286,7 @@ downloadImageBtn.addEventListener("click", () => {
   });
 });
 
-// Settings modal
-settingsModal.addEventListener("click", (event) => {
-  if (event.target === settingsModal) {
-    settingsModal.close();
-  } else {
-    const action = event.target.id;
-    const actionMap = {
-      delete: handleDeleteTier,
-      clear: handleClearTier,
-      prepend: handlePrependTier,
-      append: handleAppendTier,
-    };
-
-    if (action && actionMap[action]) {
-      actionMap[action]();
-    }
-  }
-});
-
-settingsModal.addEventListener("close", () => (activeTier = null));
-
-settingsModal
-  .querySelector(".tier-label")
-  .addEventListener("input", (event) => {
-    if (activeTier) {
-      activeTier.querySelector(".label span").textContent = event.target.value;
-    }
-  });
-
-colorsContainer.addEventListener("change", (event) => {
-  if (activeTier) {
-    activeTier
-      .querySelector(".label")
-      .style.setProperty("--color", event.target.value);
-  }
-});
-
-cardsContainer.addEventListener("dragover", (event) => {
-  event.preventDefault();
-
-  if (draggedImage) {
-    cardsContainer.appendChild(draggedImage);
-  }
-});
-
-cardsContainer.addEventListener("drop", (event) => {
-  event.preventDefault();
-  cardsContainer.scrollLeft = cardsContainer.scrollWidth;
-});
+// Initialize
+initDraggables();
+initDefaultTierList();
+initColorOptions();
